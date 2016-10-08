@@ -1,0 +1,405 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Advanced Docker</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/white.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<link rel="stylesheet" href="css/font-awesome/css/font-awesome.min.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<h1>Advanced Docker</h1>
+					<p>
+						<small>Peter Schiffer</small>
+					</p>
+				</section>
+
+				<section>
+					<dl>
+						<dt>container</dt>
+							<dd class="fragment"><i>noun</i> (<i>pl.</i> <b>containers</b>) <b>1</b> (<i>Software</i>) Fancy process.</dd>
+					</dl>
+				</section>
+
+				<section>
+					<p>clone() <span class="fragment">+ namespace </span><span class="fragment">+ cgroups </span><span class="fragment">+ cow fs </span><span class="fragment">+ capabilities </span><span class="fragment">+ selinux </span><span class="fragment">+ seccomp</span></p>
+				</section>
+
+				<section>
+					<p>file <i class="fa fa-arrow-circle-right" aria-hidden="true"></i> process</p>
+					<p class="fragment">image <i class="fa fa-arrow-circle-right" aria-hidden="true"></i> container</p>
+				</section>
+
+				<section>
+					<p>docker run -it --rm fedora bash</p>
+					<p class="fragment">docker run -d --name my-nginx nginx</p>
+					<p class="fragment">docker logs my-nginx</p>
+					<p class="fragment">docker exec -it my-nginx sh</p>
+					<p class="fragment">docker rm -fv my-nginx</p>
+				</section>
+
+				<section>
+					<h2>storage</h2>
+					<ul class="fragment">
+						<li>container cow storage</li>
+						<li>persistent storage</li>
+					</ul>
+				</section>
+
+				<section>
+					<h3>container cow storage</h3>
+				</section>
+
+				<section>
+					<ul>
+						<li>devicemapper loopback</li>
+						<li class="fragment">devicemapper direct lvm</li>
+						<li class="fragment">overlay</li>
+						<li class="fragment">btrfs</li>
+						<li class="fragment">aufs</li>
+					</ul>
+				</section>
+
+				<section>
+					<p>/etc/sysconfig/docker-storage-setup</p>
+					<pre class="fragment"><code class="sh" data-trim>
+DEVS='/dev/sdb'
+VG='docker-vg'
+DATA_SIZE=20G
+					</code></pre>
+				</section>
+
+				<section>
+					<h3>persistent storage</h3>
+				</section>
+
+				<section>
+					<p>docker run -d -e MYSQL_ROOT_PASSWORD=pw \<br>--name my-maria mariadb:10.1</p>
+					<p class="fragment">docker run -d -v /var/lib/mysql \<br>-e MYSQL_ROOT_PASSWORD=pw \<br>--name my-maria mariadb:10.1</p>
+					<pre class="fragment"><code class="sh" data-trim>
+$ sudo docker volume ls
+local               15fc72513a67...
+
+$ sudo ls -lh /var/lib/docker/volumes
+drwxr-xr-x 3 root root 4.0K Oct  7 22:55 15fc72513a67...
+					</code></pre>
+				</section>
+
+				<section>
+					<p>docker run -d -v my-maria-data:/var/lib/mysql:Z \<br>-e MYSQL_ROOT_PASSWORD=pw \<br>--name my-maria mariadb:10.1</p>
+					<pre class="fragment"><code class="sh" data-trim>
+$ sudo docker volume ls
+local               15fc72513a67...
+local               my-maria-data
+
+$ sudo ls -lh /var/lib/docker/volumes
+drwxr-xr-x 3 root root 4.0K Oct  7 22:55 15fc72513a67...
+drwxr-xr-x 3 root root 4.0K Oct  7 23:17 my-maria-data
+					</code></pre>
+				</section>
+
+				<section>
+					<p>docker run -d -v /mnt/storage/my-maria:/var/lib/mysql:Z \<br>-e MYSQL_ROOT_PASSWORD=pw \<br>--name my-maria mariadb:10.1</p>
+					<p><span class="fragment">docker run -d \<br>-v /home/petko/html:/usr/share/nginx/html \<br><span class="fragment">--security-opt label:disable</span> --name my-nginx nginx<span></p>
+				</section>
+
+				<section>
+					<h2>networking</h2>
+				</section>
+
+				<section>
+					<p>docker run -d --name my-nginx nginx</p>
+					<p class="fragment">docker run -d -p 8080:80 --name my-nginx nginx</p>
+					<p class="fragment">docker run -d --net host --name my-nginx nginx</p>
+				</section>
+
+				<section>
+					<p>docker run -d -v my-wp-db-data:/var/lib/mysql:Z \<br>-e MYSQL_ROOT_PASSWORD=pw \<br>--name my-wp-db mariadb:10.1</p>
+					<p class="fragment">docker run -d -p 8080:80 -v my-wp-data:/var/www/html:Z \<br>--link my-wp-db:mysql --name my-wp wordpress:4.6</p>
+				</section>
+
+				<section>
+					<pre><code class="sh" data-trim>
+$ sudo docker exec -it my-wp bash
+root@a453ddb7ea8f:/var/www/html# cat /etc/hosts
+...
+172.17.0.2	mysql ab1de7043c14 my-wp-db
+172.17.0.3	a453ddb7ea8f
+root@a453ddb7ea8f:/var/www/html# env | grep MYSQL | sort
+MYSQL_ENV_MYSQL_ROOT_PASSWORD=pw
+MYSQL_PORT=tcp://172.17.0.2:3306
+MYSQL_PORT_3306_TCP_ADDR=172.17.0.2
+MYSQL_PORT_3306_TCP_PORT=3306
+...
+					</code></pre>
+					<p>
+						MYSQL_ENV_MYSQL_ROOT_PASSWORD<br>
+						{LINK ALIAS}_ENV_{ENV NAME FROM LINKED CONT.}
+					</p>
+				</section>
+
+				<section>
+					<p>docker network create my-wp</p>
+					<p class="fragment">docker run -d -v my-wp-db-data:/var/lib/mysql:Z \<br>-e MYSQL_ROOT_PASSWORD=pw --net my-wp \<br>--net-alias mysql --name my-wp-db mariadb:10.1</p>
+					<p class="fragment">docker run -d -p 8080:80 \<br>-e WORDPRESS_DB_PASSWORD=pw \<br>-v my-wp-data:/var/www/html:Z --net my-wp \<br>--name my-wp wordpress:4.6</p>
+				</section>
+
+				<section>
+					<h2>building images</h2>
+				</section>
+
+				<section>
+					<p><b>FROM</b> (fedora:24|centos:7|alpine:3.4|scratch)</p>
+					<dl class="fragment">
+						<dt>fedora:24</dt>
+							<dd>(204.4 MB) Recent packages, should be your default</dd>
+						<dt>centos:7</dt>
+							<dd>(196.7 MB) Stable, not many changes, older packages</dd>
+						<dt>alpine:3.4</dt>
+							<dd>(4.799 MB) Super small, but with pkg manager</dd>
+						<dt>scratch</dt>
+							<dd>Special case, empty base image</dd>
+					</dl>
+				</section>
+
+				<section>
+					<ul>
+						<li>dnf | yum | apk</li>
+						<li class="fragment">statically linked binary (go)</li>
+						<li class="fragment">
+							layered images
+							<ul class="fragment">
+								<li>FROM fedora:24</li>
+								<li class="fragment">FROM my-base:prod</li>
+								<li class="fragment">FROM my-app:prod</li>
+							</ul>
+						</li>
+					</ul>
+				</section>
+
+				<section>
+					<pre><code class="dockerfile" data-trim>
+RUN mkdir -p /opt/kibana \
+  &amp;&amp; curl -sSL https://elastic.co/kibana-4.6.1-linux-x64.tar.gz \
+    | tar -xzC /opt/kibana --strip 1 \
+  &amp;&amp; chown -R root: /opt/kibana
+					</code></pre>
+					<pre class="fragment"><code class="dockerfile" data-trim>
+ENV MY_VAR1=xxx \
+  MY_VAR2=yyy \
+  MY_VAR3=zzz \
+					</code></pre>
+				</section>
+
+				<section>
+					<pre><code class="dockerfile" data-trim>
+FROM fedora:24
+RUN dnf install -y nginx
+RUN pip3 install envtpl
+					</code></pre>
+					<pre class="fragment"><code class="dockerfile" data-trim>
+FROM fedora:24
+RUN dnf -y --setopt=tsflags=nodocs install nginx \
+  &amp;&amp; dnf clean all
+RUN pip3 install envtpl \
+  &amp;&amp; rm -rf ~/.cache/*
+					</code></pre>
+					<p class="fragment"><i class="fa fa-arrow-circle-right" aria-hidden="true"></i> 378 MB vs 233.8 MB</p>
+				</section>
+
+				<section>
+					<pre><code class="dockerfile" data-trim>
+FROM fedora:24
+RUN dnf -y --setopt=tsflags=nodocs install \
+    nginx \
+    uwsgi \
+    uwsgi-plugin-python \
+  &amp;&amp; dnf clean all \
+  &amp;&amp; systemctl enable nginx \
+  &amp;&amp; systemctl enable uwsgi
+ENV container=docker
+STOPSIGNAL SIGRTMIN+3
+RUN echo 'ForwardToConsole=yes' >> /etc/systemd/journald.conf
+COPY uwsgi-app.ini /etc/uwsgi.d/
+RUN chown uwsgi: /etc/uwsgi.d/uwsgi-app.ini
+COPY nginx-app.conf /etc/nginx/nginx.conf
+CMD [ "/usr/sbin/init" ]
+					</code></pre>
+					<p class="fragment">docker run -dt -p 80:80 -v /sys/fs/cgroup:/sys/fs/cgroup:ro \<br>--tmpfs /run --tmpfs /tmp --name my-python-app \<br>my-python-image</p>
+				</section>
+
+				<section>
+					<p>dnf install oci-systemd-hook</p>
+					<p class="fragment">docker run -dt -p 80:80 --name my-python-app \<br>my-python-image</p>
+				</section>
+
+				<section>
+					<h2>configuration</h2>
+				</section>
+
+				<section>
+					<ul>
+						<li>Environment variables</li>
+						<li class="fragment">Bind mount config dir</li>
+						<li class="fragment">etcd!</li>
+					</ul>
+				</section>
+
+				<section>
+					<h4>Template + env vars = config file</h4>
+					<ul class="fragment">
+						<li>sed</li>
+						<li class="fragment">envsubst < /my/template > /etc/config/file  # bash vars</li>
+						<li class="fragment">
+							envtpl < /my/template > /etc/config/file  # jinja2
+							<ul><li><a href="https://github.com/andreasjansson/envtpl">github.com/andreasjansson/envtpl</a></li></ul>
+						</li>
+					</ul>
+				</section>
+
+				<section>
+					<pre><code class="jinja" data-trim>
+{% for key, value in environment('MY_APP_') %}{{ key }}={{ value }}
+{% endfor %}
+					</code></pre>
+				</section>
+
+				<section>
+					<h4>Init + config + exec = shell wrapper</h4>
+					<pre class="fragment"><code class="dockerfile" data-trim>
+COPY docker-cmd.sh /init
+CMD [ "/init" ]
+					</code></pre>
+					<pre class="fragment"><code class="sh" data-trim>
+: "${MY_APP_DB_HOST:='mysql'}"
+: "${MY_APP_DB_PORT:='3306'}"
+...
+envtpl < /my/template > /etc/config/file
+...
+exec /usr/sbin/init
+					</code></pre>
+				</section>
+
+				<section>
+					<pre><code class="sh" data-trim>
+: "${MY_APP_mysql_host:=mysql}"
+: "${MY_APP_mysql_port:=3306}"
+: "${MY_APP_mysql_user:=${MYSQL_ENV_MYSQL_USER:-root}}"
+if [ "${MY_APP_mysql_user}" = 'root' ]; then
+  : "${MY_APP_mysql_password:=$MYSQL_ENV_MYSQL_ROOT_PASSWORD}"
+fi
+: "${MY_APP_mysql_password:=${MYSQL_ENV_MYSQL_PASSWORD:-myapp}}"
+: "${MY_APP_mysql_dbname:=${MYSQL_ENV_MYSQL_DATABASE:-myapp}}"
+
+MYSQL_COMMAND="mysql -h ${MY_APP_mysql_host} \
+  -P ${MY_APP_mysql_port} -u ${MY_APP_mysql_user} \
+  -p${MY_APP_mysql_password}"
+					</code></pre>
+				</section>
+
+				<section>
+					<pre><code class="sh" data-trim>
+until $MYSQL_COMMAND -e ';' ; do
+  >&amp;2 echo 'MySQL is unavailable - sleeping'
+  sleep 1
+done
+
+$MYSQL_COMMAND -e \
+  "CREATE DATABASE IF NOT EXISTS ${MY_APP_mysql_dbname}"
+
+MYSQL_CHECK_IF_HAS_TABLE="SELECT COUNT(DISTINCT table_name) FROM \
+  information_schema.columns WHERE table_schema = \
+  '${MY_APP_mysql_dbname}';"
+MYSQL_NUM_TABLE=$($MYSQL_COMMAND --batch --skip-column-names \
+  -e "$MYSQL_CHECK_IF_HAS_TABLE")
+if [ "$MYSQL_NUM_TABLE" -eq 0 ]; then
+  $MYSQL_COMMAND -D "$MY_APP_mysql_dbname" < /path/schema.mysql.sql
+fi
+					</code></pre>
+				</section>
+
+				<section>
+					<p><a href="https://github.com/pschiffe/docker-pdns">github.com/pschiffe/docker-pdns</a></p>
+					<p><a href="https://github.com/pschiffe/docker-borg">github.com/pschiffe/docker-borg</a></p>
+				</section>
+
+				<section>
+					<p><a href="http://docs.ansible.com/ansible/docker_container_module.html">docs.ansible.com/ansible/docker_container_module.html</a></p>
+					<p><a href="https://www.ansible.com/ansible-container">ansible.com/ansible-container</a></p>
+				</section>
+
+				<section>
+					<p><a href="http://kubernetes.io/">kubernetes.io</a></p>
+					<p><a href="https://www.openshift.org/">openshift.org</a></p>
+				</section>
+
+<!--
+				<section>
+					<h2>security</h2>
+					<ul class="fragment">
+						<li>
+							selinux
+							<ul class="fragment"><li>who can talk to who</li></ul>
+						</li>
+						<li>
+							seccomp
+							<ul class="fragment"><li>what can be said</li></ul>
+						</li>
+					</ul>
+				</section>
+
+				<section>
+					<h3>selinux</h3>
+					<p class="fragment">-v /host/path:/cont/path(:z|:Z)</p>
+					<p class="fragment">- -security-opt label:(user|role|type|level|disable):VALUE</p>
+				</section>
+
+				<section>
+					<h3>seccomp</h3>
+					<p class="fragment">- -security-opt seccomp=/path/to/seccomp/profile.json</p>
+					<p class="fragment">- -security-opt label:(user|role|type|level|disable):VALUE</p>
+				</section>
+-->
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				history: true,
+				controls: false,
+				transition: 'none', // none/fade/slide/convex/concave/zoom
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
