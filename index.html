@@ -42,7 +42,7 @@
 				</section>
 
 				<section>
-					<p>clone() <span class="fragment">+ namespace </span><span class="fragment">+ cgroups </span><span class="fragment">+ cow fs </span><span class="fragment">+ capabilities </span><span class="fragment">+ selinux </span><span class="fragment">+ seccomp</span></p>
+					<p>clone() <span class="fragment">+ namespaces </span><span class="fragment">+ cgroups </span><span class="fragment">+ cow fs </span><span class="fragment">+ capabilities </span><span class="fragment">+ selinux </span><span class="fragment">+ seccomp</span></p>
 				</section>
 
 				<section>
@@ -55,6 +55,7 @@
 					<p class="fragment">docker run -d --name my-nginx nginx</p>
 					<p class="fragment">docker logs my-nginx</p>
 					<p class="fragment">docker exec -it my-nginx sh</p>
+					<p class="fragment">docker inspect my-nginx</p>
 					<p class="fragment">docker rm -fv my-nginx</p>
 				</section>
 
@@ -129,11 +130,21 @@ drwxr-xr-x 3 root root 4.0K Oct  7 23:17 my-maria-data
 
 				<section>
 					<p>docker run -d --name my-nginx nginx</p>
+					<pre class="fragment"><code class="sh" data-trim>
+						$ curl 172.17.0.2:80
+					</code></pre>
 					<p class="fragment">docker run -d -p 8080:80 --name my-nginx nginx</p>
+					<pre class="fragment"><code class="sh" data-trim>
+						$ curl localhost:8080
+					</code></pre>
 					<p class="fragment">docker run -d --net host --name my-nginx nginx</p>
+					<pre class="fragment"><code class="sh" data-trim>
+						$ curl localhost:80
+					</code></pre>
 				</section>
 
 				<section>
+					<h3>Linking containers: default bridge</h3>
 					<p>docker run -d -v my-wp-db-data:/var/lib/mysql:Z \<br>-e MYSQL_ROOT_PASSWORD=pw \<br>--name my-wp-db mariadb:10.1</p>
 					<p class="fragment">docker run -d -p 8080:80 -v my-wp-data:/var/www/html:Z \<br>--link my-wp-db:mysql --name my-wp wordpress:4.6</p>
 				</section>
@@ -145,6 +156,9 @@ root@a453ddb7ea8f:/var/www/html# cat /etc/hosts
 ...
 172.17.0.2	mysql ab1de7043c14 my-wp-db
 172.17.0.3	a453ddb7ea8f
+root@a453ddb7ea8f:/var/www/html# cat /etc/resolv.conf
+nameserver 8.8.8.8
+nameserver 8.8.4.4
 root@a453ddb7ea8f:/var/www/html# env | grep MYSQL | sort
 MYSQL_ENV_MYSQL_ROOT_PASSWORD=pw
 MYSQL_PORT=tcp://172.17.0.2:3306
@@ -159,9 +173,23 @@ MYSQL_PORT_3306_TCP_PORT=3306
 				</section>
 
 				<section>
+					<h3>Linking containers: custom net</h3>
 					<p>docker network create my-wp</p>
 					<p class="fragment">docker run -d -v my-wp-db-data:/var/lib/mysql:Z \<br>-e MYSQL_ROOT_PASSWORD=pw --net my-wp \<br>--net-alias mysql --name my-wp-db mariadb:10.1</p>
 					<p class="fragment">docker run -d -p 8080:80 \<br>-e WORDPRESS_DB_PASSWORD=pw \<br>-v my-wp-data:/var/www/html:Z --net my-wp \<br>--name my-wp wordpress:4.6</p>
+				</section>
+
+				<section>
+					<pre><code class="sh" data-trim>
+$ sudo docker exec -it my-wp bash
+root@08e10bb15cb5:/var/www/html# cat /etc/hosts
+...
+172.19.0.3	08e10bb15cb5
+root@08e10bb15cb5:/var/www/html# cat /etc/resolv.conf
+nameserver 127.0.0.11
+root@08e10bb15cb5:/var/www/html# env | grep MYSQL | sort
+root@08e10bb15cb5:/var/www/html#
+					</code></pre>
 				</section>
 
 				<section>
@@ -198,6 +226,7 @@ MYSQL_PORT_3306_TCP_PORT=3306
 				</section>
 
 				<section>
+					<h3>Minimum number of layers</h3>
 					<pre><code class="dockerfile" data-trim>
 RUN mkdir -p /opt/kibana \
   &amp;&amp; curl -sSL https://elastic.co/kibana-4.6.1-linux-x64.tar.gz \
@@ -209,12 +238,14 @@ ENV MY_VAR1=xxx \
   MY_VAR2=yyy \
   MY_VAR3=zzz \
 					</code></pre>
+					<p class="fragment"><a href="https://github.com/goldmann/docker-squash">github.com/goldmann/docker-squash</a></p>
 				</section>
 
 				<section>
+					<h3>Minimum size of the image</h3>
 					<pre><code class="dockerfile" data-trim>
 FROM fedora:24
-RUN dnf install -y nginx
+RUN dnf -y install nginx
 RUN pip3 install envtpl
 					</code></pre>
 					<pre class="fragment"><code class="dockerfile" data-trim>
@@ -224,10 +255,11 @@ RUN dnf -y --setopt=tsflags=nodocs install nginx \
 RUN pip3 install envtpl \
   &amp;&amp; rm -rf ~/.cache/*
 					</code></pre>
-					<p class="fragment"><i class="fa fa-arrow-circle-right" aria-hidden="true"></i> 378 MB vs 233.8 MB</p>
+					<p class="fragment">378 MB <i class="fa fa-arrow-circle-right" aria-hidden="true"></i> 233.8 MB</p>
 				</section>
 
 				<section>
+					<h3>Systemd in a container</h3>
 					<pre><code class="dockerfile" data-trim>
 FROM fedora:24
 RUN dnf -y --setopt=tsflags=nodocs install \
@@ -254,6 +286,11 @@ CMD [ "/usr/sbin/init" ]
 				</section>
 
 				<section>
+					<h3>Read-only container</h3>
+					<p>docker run -d -p 8080:80 --read-only \<br>--tmpfs /var/cache/nginx --tmpfs /run \<br>--name my-nginx nginx</p>
+				</section>
+
+				<section>
 					<h2>configuration</h2>
 				</section>
 
@@ -261,23 +298,33 @@ CMD [ "/usr/sbin/init" ]
 					<ul>
 						<li>Environment variables</li>
 						<li class="fragment">Bind mount config dir</li>
-						<li class="fragment">etcd!</li>
+						<li class="fragment">Etcd!</li>
 					</ul>
 				</section>
 
 				<section>
-					<h4>Template + env vars = config file</h4>
+					<h3>Template + env vars = config file</h3>
 					<ul class="fragment">
 						<li>sed</li>
-						<li class="fragment">envsubst < /my/template > /etc/config/file  # bash vars</li>
 						<li class="fragment">
-							envtpl < /my/template > /etc/config/file  # jinja2
-							<ul><li><a href="https://github.com/andreasjansson/envtpl">github.com/andreasjansson/envtpl</a></li></ul>
+							envsubst < /my/template > /etc/config/file
+							<ul><li>bash variables</li></ul>
+						</li>
+						<li class="fragment">
+							envtpl < /my/template > /etc/config/file
+							<ul>
+								<li>jinja2</li>
+								<li><a href="https://github.com/andreasjansson/envtpl">github.com/andreasjansson/envtpl</a></li>
+							</ul>
 						</li>
 					</ul>
+					<pre class="fragment"><code class="dockerfile" data-trim>
+						RUN pip3 install envtpl &amp;&amp; rm -rf ~/.cache/*
+					</code></pre>
 				</section>
 
 				<section>
+					<h3>envtpl template example</h3>
 					<pre><code class="jinja" data-trim>
 {% for key, value in environment('MY_APP_') %}{{ key }}={{ value }}
 {% endfor %}
@@ -285,7 +332,7 @@ CMD [ "/usr/sbin/init" ]
 				</section>
 
 				<section>
-					<h4>Init + config + exec = shell wrapper</h4>
+					<h3>Init + config + exec = shell wrapper</h3>
 					<pre class="fragment"><code class="dockerfile" data-trim>
 COPY docker-cmd.sh /init
 CMD [ "/init" ]
@@ -301,6 +348,7 @@ exec /usr/sbin/init
 				</section>
 
 				<section>
+					<h3>Mysql config and init example</h3>
 					<pre><code class="sh" data-trim>
 : "${MY_APP_mysql_host:=mysql}"
 : "${MY_APP_mysql_port:=3306}"
@@ -315,9 +363,11 @@ MYSQL_COMMAND="mysql -h ${MY_APP_mysql_host} \
   -P ${MY_APP_mysql_port} -u ${MY_APP_mysql_user} \
   -p${MY_APP_mysql_password}"
 					</code></pre>
+					<p><small>Auto-config will work only when linking containers on default bridge</small></p>
 				</section>
 
 				<section>
+					<h3>...</h3>
 					<pre><code class="sh" data-trim>
 until $MYSQL_COMMAND -e ';' ; do
   >&amp;2 echo 'MySQL is unavailable - sleeping'
@@ -333,8 +383,44 @@ MYSQL_CHECK_IF_HAS_TABLE="SELECT COUNT(DISTINCT table_name) FROM \
 MYSQL_NUM_TABLE=$($MYSQL_COMMAND --batch --skip-column-names \
   -e "$MYSQL_CHECK_IF_HAS_TABLE")
 if [ "$MYSQL_NUM_TABLE" -eq 0 ]; then
-  $MYSQL_COMMAND -D "$MY_APP_mysql_dbname" < /path/schema.mysql.sql
+  $MYSQL_COMMAND -D "$MY_APP_mysql_dbname" < /mysql/schema.sql
 fi
+					</code></pre>
+				</section>
+
+				<section>
+					<h2>security</h2>
+					<ul class="fragment">
+						<li>
+							selinux
+							<ul class="fragment"><li>who can talk to who</li></ul>
+						</li>
+						<li>
+							seccomp
+							<ul class="fragment"><li>what can be said</li></ul>
+						</li>
+					</ul>
+				</section>
+
+				<section>
+					<h3>selinux</h3>
+					<p>-v /host/path:/cont/path(:Z|:z)</p>
+					<p class="fragment">--security-opt label:(user|role|type|level|disable):VALUE</p>
+				</section>
+
+				<section>
+					<h3>seccomp</h3>
+					<p>--security-opt seccomp:(/path/profile.json|unconfined)</p>
+					<pre class="fragment"><code class="json" data-trim>
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "syscalls": [
+    {
+      "name": "getcwd",
+      "action": "SCMP_ACT_ERRNO"
+    }
+  ]
+}
 					</code></pre>
 				</section>
 
@@ -353,33 +439,12 @@ fi
 					<p><a href="https://www.openshift.org/">openshift.org</a></p>
 				</section>
 
-<!--
 				<section>
-					<h2>security</h2>
-					<ul class="fragment">
-						<li>
-							selinux
-							<ul class="fragment"><li>who can talk to who</li></ul>
-						</li>
-						<li>
-							seccomp
-							<ul class="fragment"><li>what can be said</li></ul>
-						</li>
-					</ul>
+					<p><i class="fa fa-question-circle fa-3x" aria-hidden="true"></i></p><br>
+					<p>Feedback: <a href="https://schiffer.typeform.com/to/Su2TwF">schiffer.typeform.com/to/Su2TwF</a></p><br>
+					<p><a href="https://github.com/pschiffe">github.com/pschiffe</a></p>
+					<p><a href="https://www.linkedin.com/in/peterschiffer">linkedin.com/in/peterschiffer</a></p>
 				</section>
-
-				<section>
-					<h3>selinux</h3>
-					<p class="fragment">-v /host/path:/cont/path(:z|:Z)</p>
-					<p class="fragment">- -security-opt label:(user|role|type|level|disable):VALUE</p>
-				</section>
-
-				<section>
-					<h3>seccomp</h3>
-					<p class="fragment">- -security-opt seccomp=/path/to/seccomp/profile.json</p>
-					<p class="fragment">- -security-opt label:(user|role|type|level|disable):VALUE</p>
-				</section>
--->
 			</div>
 		</div>
 
