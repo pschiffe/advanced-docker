@@ -399,6 +399,10 @@ fi
 							seccomp
 							<ul class="fragment"><li>what can be said</li></ul>
 						</li>
+						<li>
+							capabilities
+							<ul class="fragment"><li>restrict root</li></ul>
+						</li>
 					</ul>
 				</section>
 
@@ -421,6 +425,20 @@ fi
     }
   ]
 }
+					</code></pre>
+				</section>
+
+				<section>
+					<h3>capabilities</h3>
+					<p>--cap-drop CAP, --cap-add CAP</p>
+					<p class="fragment">--cap-drop all --cap-add setuid --cap-add setgid</p>
+					<pre class="fragment"><code class="sh" data-trim>
+$ sudo docker run -d --cap-drop=setfcap --cap-drop=audit_write \
+  --cap-drop=mknod --name my-sleep fedora sleep 5 > /dev/null; \
+  pscap | grep sleep
+25439 28683 root   sleep   chown, dac_override, fowner, fsetid, \
+  kill, setgid, setuid, setpcap, net_bind_service, net_raw, \
+  sys_chroot
 					</code></pre>
 				</section>
 
