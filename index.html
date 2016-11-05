@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -121,7 +121,7 @@ drwxr-xr-x 3 root root 4.0K Oct  7 23:17 my-maria-data
 
 				<section>
 					<p>docker run -d -v /mnt/storage/my-maria:/var/lib/mysql:Z \<br>-e MYSQL_ROOT_PASSWORD=pw \<br>--name my-maria mariadb:10.1</p>
-					<p><span class="fragment">docker run -d \<br>-v /home/petko/html:/usr/share/nginx/html \<br><span class="fragment">--security-opt label:disable</span> --name my-nginx nginx<span></p>
+					<p><span class="fragment">docker run -d \<br>-v /home/petko/html:/usr/share/nginx/html \<br><span class="fragment">--security-opt label:disable</span> --name my-nginx nginx</span></p>
 				</section>
 
 				<section>
@@ -307,11 +307,11 @@ CMD [ "/usr/sbin/init" ]
 					<ul class="fragment">
 						<li>sed</li>
 						<li class="fragment">
-							envsubst < /my/template > /etc/config/file
+							envsubst &lt; /my/template &gt; /etc/config/file
 							<ul><li>bash variables</li></ul>
 						</li>
 						<li class="fragment">
-							envtpl < /my/template > /etc/config/file
+							envtpl &lt; /my/template &gt; /etc/config/file
 							<ul>
 								<li>jinja2</li>
 								<li><a href="https://github.com/andreasjansson/envtpl">github.com/andreasjansson/envtpl</a></li>
@@ -341,7 +341,7 @@ CMD [ "/init" ]
 : "${MY_APP_DB_HOST:='mysql'}"
 : "${MY_APP_DB_PORT:='3306'}"
 ...
-envtpl < /my/template > /etc/config/file
+envtpl &lt; /my/template &gt; /etc/config/file
 ...
 exec /usr/sbin/init
 					</code></pre>
@@ -383,7 +383,7 @@ MYSQL_CHECK_IF_HAS_TABLE="SELECT COUNT(DISTINCT table_name) FROM \
 MYSQL_NUM_TABLE=$($MYSQL_COMMAND --batch --skip-column-names \
   -e "$MYSQL_CHECK_IF_HAS_TABLE")
 if [ "$MYSQL_NUM_TABLE" -eq 0 ]; then
-  $MYSQL_COMMAND -D "$MY_APP_mysql_dbname" < /mysql/schema.sql
+  $MYSQL_COMMAND -D "$MY_APP_mysql_dbname" &lt; /mysql/schema.sql
 fi
 					</code></pre>
 				</section>
